@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Tracker Admin</title>
+    <style>#map{height:100vh;width:100%;}</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API"></script>
+
+<script>
+// ---- Firebase Config ----
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.database(app);
+
+let map;
+let markers = {};
+
+function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 4,
+        center: { lat: 20.5937, lng: 78.9629 }
+    });
+
+    const ref = firebase.database().ref("locations");
+    ref.on("value", (snapshot) => {
+        const data = snapshot.val();
+        for (let id in data) {
+            let loc = data[id];
+
+            if (!markers[id]) {
+                markers[id] = new google.maps.Marker({
+                    map: map,
+                    label: id.substring(0,4),
+                });
+            }
+            markers[id].setPosition({ lat: loc.lat, lng: loc.lng });
+        }
+    });
+}
+
+initMap();
+</script>
+
+</body>
+</html>
