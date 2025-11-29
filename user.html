@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Location Sender</title>
+</head>
+<body>
+<h2>Sharing Live Location…</h2>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+
+<script>
+// ---- Firebase Config ----
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.database(app);
+
+// Generate unique ID for each user
+let uid = localStorage.getItem("uid");
+if (!uid) {
+    uid = "user_" + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem("uid", uid);
+}
+
+function sendLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition((pos) => {
+            firebase.database().ref("locations/" + uid).set({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                time: Date.now()
+            });
+        });
+    }
+}
+
+sendLocation();
+</script>
+
+</body>
+</html>
