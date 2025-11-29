@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Live Location Tracker</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+      body {
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      header {
+        padding: 12px 16px;
+        background: linear-gradient(90deg,#0ea5e9,#7c3aed);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      header h1 {
+        font-size: 16px;
+        margin: 0;
+      }
+
+      #map {
+        flex: 1 1 auto;
+        height: calc(100vh - 56px);
+      }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+      }
+
+      button {
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.15);
+        color: white;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      .status {
+        font-size: 13px;
+        color: rgba(255,255,255,0.9);
+        margin-left: 12px;
+      }
+
+      @media (max-width:600px){
+        header h1{font-size:14px}
+        button{padding:6px 8px}
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>Live Location Tracker (Permission-based)</h1>
+
+      <div style="display:flex; align-items:center">
+        <div class="controls">
+          <button id="startBtn">Start Tracking</button>
+          <button id="stopBtn" disabled>Stop</button>
+        </div>
+        <div class="status" id="status">Not tracking</div>
+      </div>
+    </header>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+      // Simple, ready-to-upload single-file website for GitHub Pages.
+      // Behavior:
+      // - Click "Start Tracking" to request geolocation permission.
+      // - If user allows, map centers on user's location and a marker follows live updates.
+      // - Click "Stop" to stop watching the position.
+      // IMPORTANT: Browser will only provide location AFTER user grants permission.
+
+      let map = null;
+      let marker = null;
+      let watchId = null;
+
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const statusEl = document.getElementById('status');
+
+      function initMap(lat, lon) {
+        map = L.map('map').setView([lat, lon], 16);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        marker = L.marker([lat, lon]).addTo(map);
+      }
+
+      function updateMarker(lat, lon, accuracy) {
+        if (!marker) {
+          marker = L.marker([lat, lon]).addTo(map);
+        } else {
+          marker.setLatLng([lat, lon]);
+        }
+
+        if (map) {
+          map.setView([lat, lon]);
+        }
+
+        statusEl.textContent = `Tracking — lat: ${lat.toFixed(5)}, lon: ${lon.toFixed(5)}, acc: ${Math.round(accuracy)}m`;
+      }
+
+      function handleError(err) {
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            statusEl.textContent = 'Permission denied — location blocked';
+            alert('Location permission was denied. The tracker needs permission to work.');
+            break;
+          case err.POSITION_UNAVAILABLE:
+            statusEl.textContent = 'Position unavailable';
+            break;
+          case err.TIMEOUT:
+            statusEl.textContent = 'Position timeout';
+            break;
+          default:
+            statusEl.textContent = 'Error getting location';
+        }
+      }
+
+      function startTracking() {
+        if (!navigator.geolocation) {
+          alert('Geolocation not supported in this browser.');
+          return;
+        }
+
+        statusEl.textContent = 'Requesting permission...';
+
+        // Request permission + start watchPosition
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const acc = pos.coords.accuracy;
+
+            if (!map) {
+              initMap(lat, lon);
+            }
+
+            updateMarker(lat, lon, acc);
+
+            // OPTIONAL: here you could send the lat/lon to your server / Firebase
+            // fetch('/save-location', { method: 'POST', body: JSON.stringify({lat, lon}) })
+            // but for GitHub Pages (static) there's no server — you'd need Firebase or your own backend.
+          },
+          (err) => handleError(err),
+          { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+        );
+
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      }
+
+      function stopTracking() {
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+        statusEl.textContent = 'Not tracking';
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+
+      startBtn.addEventListener('click', startTracking);
+      stopBtn.addEventListener('click', stopTracking);
+
+      // Optional: start automatically when page loads (commented out to respect UX & avoid surprise permissions)
+      // window.addEventListener('load', startTracking);
+
+      // Helpful: if user navigates away, stop tracking
+      window.addEventListener('beforeunload', stopTracking);
+    </script>
+  </body>
+</html>
